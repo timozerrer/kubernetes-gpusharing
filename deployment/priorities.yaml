@@ -1,0 +1,15 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: gpu-default-priority
+value: 1000000
+globalDefault: false
+description: "Default priority for workloads using GPU"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: gpu-lower-priority
+value: 10000
+globalDefault: false
+description: "Lower priority for out-of-budget workloads using GPU"

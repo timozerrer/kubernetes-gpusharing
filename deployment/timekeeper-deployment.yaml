@@ -1,0 +1,107 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: gpu-timekeeper-redis
+  namespace: kube-system
+spec:
+  selector:
+    app: gpu-timekeeper-redis
+  ports:
+  - name: redis
+    protocol: TCP
+    port: 6379
+    targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: gpu-timekeeper-redis
+  namespace: kube-system
+  name: gpu-timekeeper-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-timekeeper-redis
+  template:
+    metadata:
+      labels:
+        app: gpu-timekeeper-redis
+      name: gpu-timekeeper-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis
+          command: ["redis-server"]
+          args: ["--requirepass", "yourpassword"]
+          ports:
+            - containerPort: 6379
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: gpu-timekeeper
+  namespace: kube-system
+spec:
+  selector:
+    app: gpu-timekeeper
+  ports:
+  - name: gpu-timekeeper-service
+    protocol: TCP
+    port: 80
+    targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: gpu-timekeeper
+  namespace: kube-system
+  name: gpu-timekeeper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-timekeeper
+  template:
+    metadata:
+      labels:
+        app: gpu-timekeeper
+      name: gpu-timekeeper
+    spec:
+      serviceAccountName: gpu-timekeeper
+      containers:
+        - name: gpu-timekeeper
+          image: timozerrer/gpu-timekeeper
+          env:
+          - name: REDIS_URL
+            value: "redis://:yourpassword@gpu-timekeeper-redis.kube-system:6379/0"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gpu-timekeeper
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gpu-timekeeper
+rules:
+- apiGroups: [""] 
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gpu-timekeeper
+subjects:
+- kind: ServiceAccount
+  name: gpu-timekeeper 
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole 
+  name: gpu-timekeeper 
+  apiGroup: rbac.authorization.k8s.io

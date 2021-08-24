@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: default-gpu-quota
+  namespace: default
+spec:
+  hard:
+    requests.tencent.com/vcuda-core: 80
+    requests.tencent.com/vcuda-memory: 15
+    limits.tencent.com/vcuda-core: 80
+    limits.tencent.com/vcuda-memory: 15

@@ -1,0 +1,108 @@
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: webhook
+  namespace: kube-system
+spec:
+  selector:
+    app: webhook
+  ports:
+  - name: https
+    protocol: TCP
+    port: 443
+    targetPort: 443
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: webhook
+  namespace: kube-system
+  name: webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webhook
+  template:
+    metadata:
+      labels:
+        app: webhook
+      name: webhook
+    spec:
+      serviceAccountName: webhook
+      containers:
+        - name: webhook
+          image: timozerrer/gpu-webhook
+          imagePullPolicy: Always
+          args:
+            - "--bind=0.0.0.0:443"
+            - "--certfile=/certs/tls.crt"
+            - "--keyfile=/certs/tls.key"
+            - "app:app"
+          volumeMounts:
+            - readOnly: true
+              mountPath: /certs
+              name: webhook-certs
+          readinessProbe:
+            httpGet:
+              path: /health
+              scheme: HTTPS
+              port: 443
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              scheme: HTTPS
+              port: 443
+            initialDelaySeconds: 3
+            periodSeconds:
+      volumes:
+        - name: webhook-certs
+          secret:
+            secretName: webhook-certs
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: webhook
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: webhook
+rules:
+- apiGroups: [""] 
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: webhook
+subjects:
+- kind: ServiceAccount
+  name: webhook 
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole 
+  name: webhook 
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: webhook-certs
+  namespace: kube-system
+data:
+  tls.crt: >-
+    LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURBakNDQWVxZ0F3SUJBZ0lVZW5RZldnYXhidEE4WkVVM0NRbjQ5clFQSm1jd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0Z6RVZNQk1HQTFVRUF3d01ZV1J0YVhOemFXOXVYMk5oTUNBWERUSXhNRGN4T0RFMU5UQTFORm9ZRHpJeQpPVFV3TlRBek1UVTFNRFUwV2pBaU1TQXdIZ1lEVlFRRERCZDNaV0pvYjI5ckxtdDFZbVV0YzNsemRHVnRMbk4yCll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQURnZ0VQQURDQ0FRb0NnZ0VCQUw4TG50VTNuTlBBcXRTa0s1cGoKNFh3TXFVcmdER0oyU0xjYWZyNExoOUxPZXR1Wm9GeGJiSW8ySzcyd1JMOHdUNG9wWkdFc3QwWlBZY2JQQzBybQpnemhoaHlKT1VTdVJaVENBR0FLV0luNzcvMGYzazR0cUNqajJNdG1NWW42WlFQU0dIanljT3dITVN6NlpoejBoCkpLSnNiQnc4RkdQUEVQeGkvUklYd2MxNi9oVDBVanFJRXNFWUltdGx4NlNyNnB3UlhMUHc1TkpvY0R2VzU0dWsKd3ZUZUM5VTBickh3UXdjZDlpc1lIbGNjRXFDMWdNQjcwQW9GRXdxL2pUSU95andnVXhGaGpqMnRsQVp0Y0pEMgp1UkRLVTdNd0dwcEZmWnBKUW05aXVhOUoycWRJUkpXWGZRNEZqcVdOR2hPZ2JPU091M1VoVVJtcW1KR2RWc0hUCjJRTUNBd0VBQWFNNU1EY3dDUVlEVlIwVEJBSXdBREFMQmdOVkhROEVCQU1DQmVBd0hRWURWUjBsQkJZd0ZBWUkKS3dZQkJRVUhBd0lHQ0NzR0FRVUZCd01CTUEwR0NTcUdTSWIzRFFFQkN3VUFBNElCQVFBcEhiMVBQZXRkejFvRgowNjkva0pZUzZSSzhvZUZ5anRaS3NxQ2JLcUh6Umw1L3lyOTJMMWlpVWZ4Tlg3SHBmd0tzR283bjJuNVBBTlJECnlhSGlndHg1THcwNnhNWTFFSmxzZ21oci9xbThKUDZHaHBFcjJsekhPVmtaS1R0VE45NUUrNVJGU0d4WWxzRE0KbHJZbVVydllmWkQ2K3lQZW5pM2F6aTg3QWwvdVVUUFhOVVhMKzN1aTlBSnA3WjRTTlBLVGlsZjRhUlRmeTA4Rwo2TW41QW5Qckg3cHJFekxqb3NxRXRZMzlpV1ZJTDJYN0Ryb2EzRlpWMjdDQ3RWSlJKVzYvZkU0VEtVNHR6YmFUClNqNjduVVpaS2tDTGVZZGVTTGd4SjdpUlZhNjBYNTlFMG1KNjl0VTNmaW03S1BDbW51aHFnVE9TTkZ6UStwWGEKME9jQmNJdk0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+  tls.key: >-
+    LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdnd1ZTFUZWMwOENxMUtRcm1tUGhmQXlwU3VBTVluWkl0eHArdmd1SDBzNTYyNW1nClhGdHNpallydmJCRXZ6QlBpaWxrWVN5M1JrOWh4czhMU3VhRE9HR0hJazVSSzVGbE1JQVlBcFlpZnZ2L1IvZVQKaTJvS09QWXkyWXhpZnBsQTlJWWVQSnc3QWN4TFBwbUhQU0Vrb214c0hEd1VZODhRL0dMOUVoZkJ6WHIrRlBSUwpPb2dTd1JnaWEyWEhwS3ZxbkJGY3MvRGswbWh3Tzlibmk2VEM5TjRMMVRSdXNmQkRCeDMyS3hnZVZ4d1NvTFdBCndIdlFDZ1VUQ3IrTk1nN0tQQ0JURVdHT1BhMlVCbTF3a1BhNUVNcFRzekFhbWtWOW1rbENiMks1cjBuYXAwaEUKbFpkOURnV09wWTBhRTZCczVJNjdkU0ZSR2FxWWtaMVd3ZFBaQXdJREFRQUJBb0lCQUhZQlZvVzdTVHFlK3FaSQpGY3JTd1RmZmxqNXlzQk90bm5MRGdlQWZ2VERnYTVEemp0TWRnYWpKbHpFZkRRZlBib0lYMlRJUTdkQVhQbjBQCjdKakNVL0ZpaEpjVEt4NHZQQUsrVEpaa2FFQnBwYUN0YzB5ZEhsMWE3Y1BrNi8zbzZlOWdYSkx4cVowTnRMaWgKR3FFT3ROTkRCM0JWUi83eXF6cEtacWxqVlVsM0NKMm5xV2RzRDhBUWNUN3hiNnE3U2l2cEppbXFtL3JwVVdjMgpBbWVJdW5ndzRIYS8ycGZ5c2pFc1pxemcrWmlzeHY2MmxCdFdaOGJ2a3pTaUpqSW1tS3MvL2dXNjAxc1JDdGl3Ck45NjZhZ2VJQklnNFpXM0tzVHM1eGhRMmt3YUVUejRDdmIyM2NQdERyNm1MTGFETFlaU1ZuMGhOMGU1SGZ6MTMKakwvT01zRUNnWUVBL0Z4N0JFcWpLdnlJb085YUdkdUNqWWMraDY5Z0E2U1NBMGYzZ3krMWxrdXd6ZUZoZ2NMbQpXUGdoajBPOFg5a3RPTFV4bWtGTmdtaFZqMlNmd2o2THEzQmRXMFdZK2p0bzIrYjIrRVd2ZW14NU5sRElOQVc1CmdMcFFreitZQ1BXVkVITUtpc0tReCt5OUp5SE5VUndvaldOWHQ1aTV2Z05oekxyTHZNb1ZVMkVDZ1lFQXdjelAKVjJxSnVianBIdDlvMjhRbG50U0ozYWhUZ0dUYXA0SlVhYlNyMFdnZEd2NzRscjFQeDh2U1lWZmRIZGNraGxWSwoybVpNbUNIR2F6RmdHOFQ3V2pxOGlvVVZLU1FhKzA5dmxmM2ZEWUZOQXBnNUlZWlBreTFFNHRRRHI4YTRBcUYwCnR0ZkVuSW03T3BaN1VpQ0pOR1F6Qm9lMnFyR1pGUGFYZFNkZEt1TUNnWUFwdGQ5ZlJqYlIxQXVCRGc2R1Y1R3MKY3I0VER4bC9nS1BoaHZPUjYwRElKcHFDYk00QTlJVytEc1Q5T09UWnNydVdzOXdPOHR3c3diSGlrVzhXVytBWgo1ZWlJUFdpYmMxWlJna3N2bmRUekZ4cXhyNGhua01xb1RDTWxNMDJkclhtRnpuM2ZrV2o4b2xSaE0yVU1FdXRnCjh4cDhiZkhGUmluVC9NdlAyRmJPQVFLQmdRQ1pLRlJBUUhraHBvbk5sVC9ZVm5ab3hJMUQrTEF0Q3dkbVZIQ0QKclg0UUcxak5LZTJwcTJrdWU5MENneDdEWTNDQkhVenZ0dU1YWTdIY3F3UEtUbTFhVElzT2FjaGtZQjFXdU50MQp6VkdHNmNYRHBDdWFXL3Z0VTF4YWFyV1RKOWZxZEZDNTQyR0ZXSy8zeUU4amc0VUxPNWk3czJ0Z0VNVHJOVXBUCkVzM2xnd0tCZ0MvVjVFVGd1a0Z5SUVsN2lUekRWNDVVUHVIcXdjM21jaFpQNVJEUCttNnkxSXhlVzRDNXhJeFUKRTVRSWp1NDFRUUtWc0l1aC9UdlN2YUdaN09aYlVWeEdOLy82U0NjdjZXbkpDdFRFU0w5dHhyVTMwTThZK29pSApDc0lFN1R2aHBJcFgzR2NkcU1pNytWenFWbzNYUEI0bmlVWVZsc2ZGZnJkOW55WnQ4YWRpCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
+type: kubernetes.io/tls

@@ -1,0 +1,28 @@
+kind: MutatingWebhookConfiguration
+apiVersion: admissionregistration.k8s.io/v1
+metadata:
+  name: mutating-webhook
+webhooks:
+  - name: webhook.webhook.svc
+    rules:
+      - operations: ["CREATE" , "UPDATE"]
+        apiGroups: ["*"]
+        apiVersions: ["*"]
+        resources: ["pods", "jobs", "deployments"]
+    namespaceSelector:
+      matchExpressions:
+      - key: namespace
+        operator: NotIn
+        values: ["kube-system"]
+    clientConfig:
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFVENDQWZtZ0F3SUJBZ0lVU240RnNjMEJNOWlPN0s0cnBla1RlaU8reTZRd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0Z6RVZNQk1HQTFVRUF3d01ZV1J0YVhOemFXOXVYMk5oTUNBWERUSXhNRGN4T0RFMU5UQTFORm9ZRHpJeQpPVFV3TlRBek1UVTFNRFUwV2pBWE1SVXdFd1lEVlFRRERBeGhaRzFwYzNOcGIyNWZZMkV3Z2dFaU1BMEdDU3FHClNJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUJBUUREUW45TTJ4ZzZheE4yVjNOTTRkNXZLeEtDdTFON0dTb0EKYTlFYlUyQmRtRlhNbEtyZmRSQWZKUDhOWnh3eGhaUEttM085OENOZUJJNk9Cdkt1SjVXZlRHVElXdDhLaDRudgpTNG5mZHBmMWhKTVNOWUt1QmhDeCtWbjQ1a2NsME8wZVAvUko5OHFIdzBkTXNIWXoxVEY5VVdMWnpSTStqbnBBCkV3UFFoOXFJcXNUY0txMlhORnhKbmI4bTJxWG9mZklXTmxVSlUybmJhcnNMQmhWazU4NWUzN0pXM2hLZ0JEVTMKbkVMNlp3aThHV2NGT3VqV1o2TGtCbVNjNEdqQXhTQVl6VWpmZnUrTTJ4bmVNQkdQQjJ1cldnSElkeVdvb2RlLwpyL3dheHRtbHh6djI4V1ZWbGZ2UlNqekZuU0w4OUNnWEZhM1hmdXh1UStCdWFnM1hlK2NSQWdNQkFBR2pVekJSCk1CMEdBMVVkRGdRV0JCUkNyQ2Q2K3N5OGxidWhyVmp3SWllTThKMFVZREFmQmdOVkhTTUVHREFXZ0JSQ3JDZDYKK3N5OGxidWhyVmp3SWllTThKMFVZREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQTBHQ1NxR1NJYjNEUUVCQ3dVQQpBNElCQVFDWThNNFJZblVYZ3Y1Q2xxZGk5blY2am1STEJkd1gxa1RnRG0zcXFRWWVtdHovNE5lenlvQUJPOE9NCkRKWnRvZUxuME9yN3FNa1Z3MVJZYjlUTWVNekpVYlVuM29USmFQTDE3WjVqMUwvYkpUVUVGd1ZnbzhpbEhPWk0KSmN6a25jci9EbHpkNVdOa3h4QVV5a3hZaXBRdUFhR1N4MUVVK2NCM1NZSnROZm9ZRzhBRWJEZlE0VWR1WDB2Tgp3SW04bTVyOEErdnV2eHljSmRYTEtWWWZQMFBMaHdHNVJjRUppUWcwb09wV0tDakNyZnQ3bDdJelVRZVhjc2hTCkYyMFNvSjVpYmhtQkFXNzYvR2dMSStYMDRrV0FMalNGZmtOaTM0QkZSd0hIUytwT2k5REI5eExVN2podE90blQKdXFrNXc2SlMvTVVJTks1RGFnZ0RTK1dtTmkzWQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+      service:
+        namespace: kube-system
+        name: webhook
+        path: /mutate
+    admissionReviewVersions: ["v1", "v1beta1"]
+    sideEffects: None
+    timeoutSeconds: 30
+
+
+    
